@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+  triggers:
+    - template:
+        name: minio-workflow-trigger
+        k8s:
+          operation: create
+          source:
+            configmap:
+              name: trigger-store
+              namespace: argo-events
+              key: workflow

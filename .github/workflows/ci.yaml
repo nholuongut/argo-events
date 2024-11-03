@@ -1,0 +1,137 @@
+name: test
+on:
+  push:
+    branches:
+      - "main"
+      - "release-*"
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  codegen:
+    name: Codegen
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Restore go build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Get dependencies
+        run: go mod download
+      - name: Make codegen
+        run: make -B codegen
+      - name: Ensure nothing changed
+        run: git diff --exit-code
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Restore go build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Get dependencies
+        run: go mod download
+      - name: Run tests
+        run: make test
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GOPATH: /home/runner/go
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Restore go build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - run: make lint
+      - run: git diff --exit-code
+
+  e2e-tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      KUBECONFIG: /home/runner/.kubeconfig
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - driver: stan
+          - driver: jetstream
+          #- driver: kafka
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Restore go build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Install k3d
+        run: curl -sfL https://raw.githubusercontent.com/rancher/k3d/main/install.sh | bash &
+      - name: Create k3d cluster
+        run: |
+          k3d cluster create e2e
+          mkdir -p ~/.kube
+          k3d kubeconfig get e2e > ~/.kube/argo-events-e2e-config
+      - name: Install Argo Events
+        env:
+          GOPATH: /home/runner/go
+        run: |
+          KUBECONFIG=~/.kube/argo-events-e2e-config VERSION=${{ github.sha }} make start
+      - name: Run tests
+        env:
+          GOPATH: /home/runner/go
+        run: |
+          KUBECONFIG=~/.kube/argo-events-e2e-config EventBusDriver=${{ matrix.driver }} make test-functional

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    container:
+      volumeMounts:
+        - mountPath: /workflows/hello_world.yaml
+          name: workflow-file
+    volumes:
+      - name: workflow-file
+        configMap:
+          name: configmap-that-contains-the-workflow-definition
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+  triggers:
+    - template:
+        name: file-workflow-trigger
+        k8s:
+          operation: create
+          source:
+            file:
+              path: /workflows/hello_world.yaml

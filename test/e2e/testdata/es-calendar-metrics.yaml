@@ -1,0 +1,10 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: e2e-calendar-metrics
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  calendar:
+    example:
+      interval: 10s

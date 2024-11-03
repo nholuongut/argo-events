@@ -1,0 +1,34 @@
+name: gh-pages
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    permissions:
+      contents: write  # for peaceiris/actions-gh-pages to push pages branch
+    if: github.repository == 'nholuongut/argo-events'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Setup Golang
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      - name: build
+        run: make docs
+      - name: deploy
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.repository == 'nholuongut/argo-events' && github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site

@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dependency
+      eventSourceName: webhook
+      eventName: example
+  triggers:
+    - template:
+        name: multi-trigger-workflow-1
+        k8s:
+          operation: create
+          source:
+            s3:
+              bucket:
+                name: workflows
+                key: hello-world.yaml
+              endpoint: minio-service.argo-events:9000
+              insecure: true
+              accessKey:
+                key: accesskey
+                name: artifacts-minio
+              secretKey:
+                key: secretkey
+                name: artifacts-minio
+    - template:
+        name: multi-trigger-workflow-2
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: hello-world-
+              spec:
+                entrypoint: whalesay
+                templates:
+                  -
+                    container:
+                      args:
+                        - "hello world"
+                      command:
+                        - cowsay
+                      image: docker/whalesay:latest
+                    name: whalesay

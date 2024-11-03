@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+      # The filter is applied on the context of the event.
+      # The trigger will be executed only of the event passes the filter
+      filters:
+        context:
+          source: webhook
+          subject: example
+          datacontenttype: application/json
+  triggers:
+    - template:
+        name: done-workflow
+        k8s:
+          operation: create
+          source:
+            s3:
+              bucket:
+                name: workflows
+                key: hello-world.yaml
+              endpoint: minio-service.argo-events:9000
+              insecure: true
+              accessKey:
+                key: accesskey
+                name: artifacts-minio
+              secretKey:
+                key: secretkey
+                name: artifacts-minio

@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+  triggers:
+    - template:
+        name: lambda-trigger
+        awsLambda:
+          functionName: hello
+          accessKey:
+            name: aws-secret
+            key: accesskey
+          secretKey:
+            name: aws-secret
+            key: secretkey
+          region: us-east-1
+          payload:
+            - src:
+                dependencyName: test-dep
+                dataKey: body.name
+              dest: name

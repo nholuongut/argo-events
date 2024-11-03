@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+  triggers:
+    - template:
+        name: workflow-trigger
+        k8s:
+          operation: create
+          source:
+            configmap:
+              name: workflow-cm
+              # key within configmap whose corresponding value contains the workflow definition
+              key: wf

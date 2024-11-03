@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: minio
+spec:
+  dependencies:
+    - name: test-dep
+      eventSourceName: minio
+      eventName: example
+  triggers:
+    - template:
+        name: http-trigger
+        http:
+          url: http://http-server.argo-events.svc:8090/hello
+          payload:
+            - src:
+                dependencyName: test-dep
+                dataKey: notification.0.s3.bucket.name
+              dest: bucket
+            - src:
+                dependencyName: test-dep
+                contextKey: type
+              dest: type
+          method: POST
+      retryStrategy:
+        steps: 3
+        duration: 3s

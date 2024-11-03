@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+      filters:
+        time:
+          start: "22:14:05"
+          stop: "23:04:05"
+    - name: test-another-dep
+      eventSourceName: webhook
+      eventName: example1
+      filters:
+        time:
+          # start > stop, stop is treated as next day of start,
+          # so in this case, events can pass only during 50 minutes from 23:34:05
+          start: "23:34:05"
+          stop: "00:24:05" # == "24:24:05"
+  triggers:
+    - template:
+        name: hello-world-workflow-trigger
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: time-filter-hello-world-
+              spec:
+                entrypoint: whalesay
+                templates:
+                  -
+                    container:
+                      args:
+                        - "hello world"
+                      command:
+                        - cowsay
+                      image: "docker/whalesay:latest"
+                    name: whalesay

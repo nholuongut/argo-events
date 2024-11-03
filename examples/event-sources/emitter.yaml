@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: emitter
+spec:
+  emitter:
+    example:
+      # Broker URI to connect to.
+      broker: tcp://broker.argo-events.svc:4000
+      # ChannelName refers to the channel name
+      channelName: hello
+      # ChannelKey is the key for the channel
+      channelKey: channel_key
+      # jsonBody specifies that all event body payload coming from this
+      # source will be JSON
+      jsonBody: true
+      # optional backoff time for connection retries.
+      # if not provided, default connection backoff time will be used.
+      connectionBackoff:
+        # duration in nanoseconds, or strings like "4s", "1m". following value is 10 seconds.
+        duration: 10s
+        # how many times you want to apply backoff.
+        steps: 5
+        # factor to increase on each step.
+        # setting factor > 1 makes the backoff exponential.
+        factor: 2
+        jitter: 0.2
+#  template:
+#      # Username to use to connect to broker
+#      # +optional
+#      username:
+#        name: name_of_the_secret_that_containing_username
+#        key: name_of_the_secret_that_containing_username
+#      # Password to use to connect to broker
+#      # +optional
+#      password:
+#        name: name_of_the_secret_that_containing_password
+#        key: name_of_the_secret_that_containing_password
+
+#    example-tls:
+#      broker: tcp://broker.argo-events.svc:4000
+#      channelName: hello
+#      channelKey: channel_key
+#      jsonBody: true
+#      tls:
+#        caCertSecret:
+#          name: my-secret
+#          key: ca-cert-key
+#        clientCertSecret:
+#          name: my-secret
+#          key: client-cert-key
+#        clientKeySecret:
+#          name: my-secret
+#          key: client-key-key

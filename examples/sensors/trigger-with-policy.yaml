@@ -1,0 +1,71 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+
+  # If set to true, marks sensor state as `error` if the previous trigger round fails.
+  # Once sensor state is set to `error`, no further triggers will be processed.
+  # Defaults to false
+  errorOnFailedRound: true
+
+  triggers:
+    - template:
+        name: trigger-1
+
+        # Policy to configure backoff and execution criteria for the trigger
+        # Because the sensor is able to trigger any K8s resource, it determines the resource state by looking at the resource's labels.
+        policy:
+          k8s:
+            # Backoff before checking the resource labels
+            backoff:
+              # Duration is the duration in nanoseconds, or strings like "3s", "2m"
+              duration: 1s # 1 second
+              # Duration is multiplied by factor each iteration
+              factor: 2
+              # The amount of jitter applied each iteration
+              jitter: 0.1
+              # Exit with error after these many steps
+              steps: 5
+            # labels set on the resource decide if the resource has transitioned into the success state.
+            labels:
+              workflows.argoproj.io/phase: Succeeded
+            # Determines whether trigger should be marked as failed if the backoff times out and sensor is still unable to decide the state of the trigger.
+            # defaults to false
+            errorOnBackoffTimeout: true
+
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: webhook-
+              spec:
+                entrypoint: whalesay
+                arguments:
+                  parameters:
+                  - name: message
+                    # the value will get overridden by the event payload from test-dep
+                    value: hello world
+                templates:
+                - name: whalesay
+                  inputs:
+                    parameters:
+                    - name: message
+                  container:
+                    image: docker/whalesay:latest
+                    command: [cowsay]
+                    args: ["{{inputs.parameters.message}}"]
+          parameters:
+            - src:
+                dependencyName: test-dep
+                dataKey: body
+              dest: spec.arguments.parameters.0.value

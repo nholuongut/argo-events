@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: webhook
+spec:
+  template:
+    serviceAccountName: operate-workflow-sa
+  # defines list of all events sensor will accept
+  dependencies:
+    - name: test-dep
+      eventSourceName: webhook
+      eventName: example
+    - name: test-dep-foo
+      eventSourceName: webhook
+      eventName: example-foo
+
+  triggers:
+    - template:
+        # Boolean expression contains dependency names to determine whether to execute the trigger or not
+        conditions: "test-dep"
+        conditionsReset:
+          - byTime:
+              # Reset conditions at 23:59 everyday
+              cron: "59 23 * * *"
+              timezone: "America/Los_Angeles"
+        name: webhook-workflow-trigger
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: hello-world-
+              spec:
+                entrypoint: whalesay
+                templates:
+                  - name: whalesay
+                    container:
+                      args:
+                        - "hello world"
+                      command:
+                        - cowsay
+                      image: "docker/whalesay:latest"
+    - template:
+        # Boolean expression contains dependency names to determine whether to execute the trigger or not
+        conditions: "test-dep-foo"
+        name: webhook-workflow-trigger-2
+        k8s:
+          operation: create
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: hello-world-2-
+              spec:
+                entrypoint: whalesay
+                templates:
+                  - name: whalesay
+                    container:
+                      args:
+                        - "hello world"
+                      command:
+                        - cowsay
+                      image: "docker/whalesay:latest"

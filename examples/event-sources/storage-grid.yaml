@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: storage-grid
+spec:
+  service:
+    ports:
+      - port: 8080
+        targetPort: 8080
+  storageGrid:
+    example:
+      # hook contains configuration for the HTTP server running in the event-source.
+      # StorageGrid will send events to following port and endpoint
+      webhook:
+        # port to run HTTP server on
+        port: "8080"
+        # HTTP request method to allow. In this case, only POST requests are accepted
+        method: POST
+        # endpoint to listen events on
+        endpoint: "/"
+        # url for StorageGrid to send notifications to. Make sure that this URL is reachable from StorageGrid
+        # The name for the service is in `<event-source-name>-eventsource-svc` format.
+        # You will need to create an Ingress or Openshift Route for the event-source service so that it can be reached from StorageGrid.
+        url: event-source-url
+      # List of supported events can be derived from AWS S3 events https://docs.aws.amazon.com/AmazonS3/latest/dev/NotificationHowTo.html#supported-notification-event-types
+      events:
+        - s3:ObjectCreated:*
+      # More info available at https://docs.netapp.com/sgws-110/index.jsp?topic=%2Fcom.netapp.doc.sg-tenant-admin%2FGUID-7D83D20B-F061-40ED-8C7C-F3395047B8C5.html
+      topicArn: topic arn
+      # Name of the bucket to listen notifications for
+      bucket: name of the bucket
+      # This is the URL of your StorageGrid API Portal
+      apiURL: storagegrid api url
+      # Auth Token to authenticate against StorageGrid API
+      authToken:
+        name: name of k8s secret that holds storagegrid auth token
+        key: key within secret that holds the token value
